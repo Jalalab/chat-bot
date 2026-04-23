@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Chatbot</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+    #cb-btn {
+      position: fixed; bottom: 24px; right: 24px;
+      width: 56px; height: 56px; border-radius: 50%;
+      background: #1D9E75; border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999; box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    }
+    #cb-btn svg { width: 26px; height: 26px; fill: #fff; }
+
+    #cb-box {
+      position: fixed; bottom: 92px; right: 24px;
+      width: 350px; background: #fff;
+      border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+      display: none; flex-direction: column; overflow: hidden;
+      z-index: 9999; max-height: 500px;
+    }
+    #cb-box.open { display: flex; }
+
+    #cb-head {
+      background: #1D9E75; padding: 14px 16px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    #cb-head .av {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      display: flex; align-items: center; justify-content: center; font-size: 17px;
+    }
+    #cb-head .name { color: #fff; font-weight: 600; font-size: 14px; }
+    #cb-head .status { color: rgba(255,255,255,0.8); font-size: 11px; }
+    #cb-head button {
+      margin-left: auto; background: none; border: none;
+      color: #fff; font-size: 20px; cursor: pointer;
+    }
+
+    #cb-msgs {
+      flex: 1; overflow-y: auto; padding: 14px;
+      display: flex; flex-direction: column; gap: 10px;
+      background: #f7f7f7;
+    }
+    .msg {
+      max-width: 82%; padding: 9px 13px;
+      border-radius: 14px; font-size: 14px; line-height: 1.5;
+      word-break: break-word;
+    }
+    .msg.bot {
+      background: #fff; color: #222;
+      align-self: flex-start;
+      border-bottom-left-radius: 3px;
+      border: 1px solid #eee;
+    }
+    .msg.user {
+      background: #1D9E75; color: #fff;
+      align-self: flex-end;
+      border-bottom-right-radius: 3px;
+    }
+    .msg.typing { color: #999; font-style: italic; background: #fff; border: 1px solid #eee; }
+
+    #cb-input-row {
+      display: flex; gap: 8px; padding: 10px 12px;
+      border-top: 1px solid #eee; background: #fff;
+    }
+    #cb-input {
+      flex: 1; border: 1px solid #ddd; border-radius: 20px;
+      padding: 8px 14px; font-size: 13px; outline: none;
+    }
+    #cb-input:focus { border-color: #1D9E75; }
+    #cb-send {
+      background: #1D9E75; border: none; border-radius: 50%;
+      width: 36px; height: 36px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    #cb-send:disabled { opacity: 0.5; cursor: not-allowed; }
+    #cb-send svg { width: 15px; height: 15px; fill: #fff; }
+
+    #cb-brand {
+      text-align: center; font-size: 10px; color: #ccc;
+      padding: 5px; background: #fff;
+    }
+    #cb-brand a { color: #1D9E75; text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<script>
+  /* ===== CHANGE THESE FOR EACH CLIENT ===== */
+  var CONFIG = {
+    name: "Dhaka Spice Restaurant",
+    emoji: "🍽",
+    color: "#1D9E75",
+    welcome: "Hi! I'm the assistant for Dhaka Spice. How can I help you?",
+    quickReplies: ["View menu", "Opening hours", "Delivery info", "Book a table"],
+    info: `You are a helpful assistant for "Dhaka Spice Restaurant".
+Only answer questions about this business. Be friendly and brief (2-3 sentences max).
+
+Business details:
+- Open daily 10am to 11pm
+- Location: Gulshan 2, Dhaka
+- Phone: 01711-XXXXXX
+- Delivery via Pathao and Shohoz
+- Popular dishes: Kacchi Biryani 450tk, Beef Bhuna 320tk, Fish Curry 280tk
+- For table booking call or WhatsApp 01711-XXXXXX
+
+If you don't know something say: Please call us on 01711-XXXXXX`
+  };
+  /* ======================================= */
+</script>
+
+<button id="cb-btn" onclick="toggle()">
+  <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+</button>
+
+<div id="cb-box">
+  <div id="cb-head">
+    <div class="av" id="av"></div>
+    <div>
+      <div class="name" id="bname"></div>
+      <div class="status">Online — ask me anything</div>
+    </div>
+    <button onclick="toggle()">&#x2715;</button>
+  </div>
+  <div id="cb-msgs"></div>
+  <div id="cb-input-row">
+    <input id="cb-input" type="text" placeholder="Type your message..." />
+    <button id="cb-send" onclick="send()">
+      <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+    </button>
+  </div>
+  <div id="cb-brand">Powered by <a href="#">BotifyBD</a></div>
+</div>
+
+<script>
+  var history = [];
+  var isOpen = false;
+
+  document.getElementById('av').textContent = CONFIG.emoji;
+  document.getElementById('bname').textContent = CONFIG.name;
+  document.getElementById('cb-btn').style.background = CONFIG.color;
+  document.getElementById('cb-send').style.background = CONFIG.color;
+  document.getElementById('cb-head').style.background = CONFIG.color;
+
+  function toggle() {
+    isOpen = !isOpen;
+    document.getElementById('cb-box').classList.toggle('open', isOpen);
+    if (isOpen && history.length === 0) {
+      addMsg('bot', CONFIG.welcome);
+      showQuickReplies();
+    }
+  }
+
+  function showQuickReplies() {
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 10px;background:#f7f7f7';
+    CONFIG.quickReplies.forEach(function(q) {
+      var btn = document.createElement('button');
+      btn.textContent = q;
+      btn.style.cssText = 'font-size:12px;padding:5px 10px;border:1px solid #ddd;border-radius:20px;background:#fff;cursor:pointer;color:#444';
+      btn.onclick = function() {
+        document.getElementById('cb-input').value = q;
+        wrap.remove();
+        send();
+      };
+      wrap.appendChild(btn);
+    });
+    document.getElementById('cb-msgs').after(wrap);
+  }
+
+  function addMsg(role, text) {
+    var msgs = document.getElementById('cb-msgs');
+    var el = document.createElement('div');
+    el.className = 'msg ' + role;
+    el.textContent = text;
+    msgs.appendChild(el);
+    msgs.scrollTop = msgs.scrollHeight;
+    return el;
+  }
+
+  async function send() {
+    var input = document.getElementById('cb-input');
+    var btn = document.getElementById('cb-send');
+    var text = input.value.trim();
+    if (!text) return;
+
+    input.value = '';
+    btn.disabled = true;
+    addMsg('user', text);
+    history.push({ role: 'user', content: text });
+
+    var typing = addMsg('typing', 'Typing...');
+
+    try {
+      var res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: history, systemPrompt: CONFIG.info })
+      });
+
+      var data = await res.json();
+
+      typing.remove();
+
+      if (data.reply) {
+        addMsg('bot', data.reply);
+        history.push({ role: 'assistant', content: data.reply });
+      } else {
+        addMsg('bot', 'Error: ' + (data.error || 'Unknown error'));
+      }
+    } catch (e) {
+      typing.remove();
+      addMsg('bot', 'Network error: ' + e.message);
+    }
+
+    btn.disabled = false;
+  }
+
+  document.getElementById('cb-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') send();
+  });
+</script>
+
+</body>
+</html>
