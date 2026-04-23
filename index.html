@@ -139,7 +139,7 @@ If you don't know something say: Please call us on 01711-XXXXXX`
 </div>
 
 <script>
-  var history = [];
+  var chatHistory = [];
   var isOpen = false;
 
   document.getElementById('av').textContent = CONFIG.emoji;
@@ -151,7 +151,7 @@ If you don't know something say: Please call us on 01711-XXXXXX`
   function toggle() {
     isOpen = !isOpen;
     document.getElementById('cb-box').classList.toggle('open', isOpen);
-    if (isOpen && history.length === 0) {
+    if (isOpen && chatHistory.length === 0) {
       addMsg('bot', CONFIG.welcome);
       showQuickReplies();
     }
@@ -193,7 +193,7 @@ If you don't know something say: Please call us on 01711-XXXXXX`
     input.value = '';
     btn.disabled = true;
     addMsg('user', text);
-    history.push({ role: 'user', content: text });
+    chatHistory.push({ role: 'user', content: text });
 
     var typing = addMsg('typing', 'Typing...');
 
@@ -201,7 +201,7 @@ If you don't know something say: Please call us on 01711-XXXXXX`
       var res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: history, systemPrompt: CONFIG.info })
+        body: JSON.stringify({ messages: chatHistory, systemPrompt: CONFIG.info })
       });
 
       var data = await res.json();
@@ -210,7 +210,7 @@ If you don't know something say: Please call us on 01711-XXXXXX`
 
       if (data.reply) {
         addMsg('bot', data.reply);
-        history.push({ role: 'assistant', content: data.reply });
+        chatHistory.push({ role: 'assistant', content: data.reply });
       } else {
         addMsg('bot', 'Error: ' + (data.error || 'Unknown error'));
       }
